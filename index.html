@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Koalitionsrechner 2025</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Gilroy Black', sans-serif;
+      font-style: italic;
+    }
+    .legend-item.selected {
+      border: 0.25em solid #ffffff;
+    }
+  </style>
+</head>
+<body class="flex flex-col md:flex-row h-screen bg-[#252525] text-[#252525]">
+  <!-- Eingabebereich -->
+  <div class="w-full md:w-[30%] p-6 bg-[#252525] flex flex-col justify-center">
+    <p class="text-3xl md:text-5xl mb-4 text-center text-[#c9ceff]">Koalitionsrechner</p>
+    <select id="institute-select" class="mb-4 p-2 bg-[#c9ceff] rounded-lg">
+      <option value="">Institut auswählen</option>
+    </select>
+    <div id="inputs" class="flex flex-col gap-3"></div>
+  </div>
+
+  <!-- Diagrammbereich -->
+  <div class="flex-grow flex flex-col items-center justify-center m-5 p-5">
+    <canvas id="chart" class="max-w-full" width="600" height="300"></canvas>
+    <div id="legend" class="flex flex-wrap gap-2 mt-5 justify-center"></div>
+    <div id="coalition-box" class="mt-5 h-16 p-4 bg-[#c9ceff] rounded transition-transform duration-200 hover:transform hover:-translate-y-1 hover:shadow-lg">
+      <div class="coalition-item text-xl font-bold">
+        ↑ Wähle Parteien für eine Koalition aus ↑
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const parties = ["LINKE", "GRÜNE", "SPD", "BSW", "FDP", "CDU/CSU", "AFD"];
+    const seatsTotal = 598;
+    const partyColors = {
+      "LINKE": "#be3075", "GRÜNE": "#64a12d", "SPD": "#e3000f", "BSW": "#54173c",
+      "FDP": "#ffed00", "CDU/CSU": "#000000", "AFD": "#009ee0"
+    };
+
+    const inputContainer = document.getElementById("inputs");
+    parties.forEach(p => {
+      inputContainer.innerHTML += `
+        <div class="input-group flex items-center justify-between p-[0.5em] bg-[#c9ceff] rounded-[0.75em] mb-[0.75em] transition-transform duration-200 hover:transform hover:-translate-y-[0.125em] hover:shadow-[0_0.5em_1em_rgba(0,0,0,0.3)]">
+          <label class="font-bold flex-grow">${p}</label>
+          <input type="number" id="${p}" min="0" max="100" value="0" onchange="handleInputChange()" class="bg-transparent border-none p-[0.625em] rounded-[0.5em] h-[2em] w-[4em] text-center">
+          <p class="text-lg">%</p>
+        </div>`;
+    });
+    inputContainer.innerHTML += `
+      <div class="input-group flex items-center justify-between p-[0.5em] bg-[#c9ceff] rounded-[0.75em] mb-[1em] transition-transform duration-200 hover:transform hover:-translate-y-[0.125em] hover:shadow-[0_0.5em_1em_rgba(0,0,0,0.3)]">
+        <label class="font-bold flex-grow">Sonstige</label>
+        <input type="number" id="Sonstige" readonly class="bg-transparent border-none p-[0.625em] rounded-[0.5em] h-[2em] w-[4em] text-center">
+        <p class="text-lg">%</p>
+      </div>`;
+
+    let selectedParties = new Set();
+
+    // Lade die JSON-Daten
+    fetch('https://api.dawum.de/')
+      .then(response => response.json())
+      .then(data => {
+        const institutes = data.Institutes;
+        const surveys = data.Surveys;
+        const parliamentId = "0"; // Bundestag
+        const bundestagSurveys = Object.values(surveys).filter(survey => survey.Parliament_ID === parliamentId);
+
+        const instituteSelect = document.getElementById("institute-select");
+        // Füge "Manuell" als Option hinzu:
+        const manualOption = document.createElement("option");
+        manualOption.value = "manual";
+        manualOption.textContent = "Manuell";
+        instituteSelect.appendChild(manualOption);
+
+        // Nur Institute mit Bundestagsumfragen:
+        const validInstituteIds = new Set(bundestagSurveys.map(s => s.Institute_ID));
+        Object.entries(institutes).forEach(([id, institute]) => {
+          if (!validInstituteIds.has(id)) return;
+          const surveysForInstitute = bundestagSurveys.filter(s => s.Institute_ID === id);
+          surveysForInstitute.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+          const latestSurvey = surveysForInstitute[0];
+          const surveyDate = new Date(latestSurvey.Date).toLocaleDateString("de-DE");
+          const option = document.createElement("option");
+          option.value = id;
+          option.textContent = `${institute.Name} (${surveyDate})`;
+          instituteSelect.appendChild(option);
+        });
+
+        // Event-Listener für das Dropdown-Menü
+        instituteSelect.addEventListener("change", () => {
+          const selectedInstituteId = instituteSelect.value;
+          if (selectedInstituteId && selectedInstituteId !== "manual") {
+            const latestSurvey = bundestagSurveys
+              .filter(survey => survey.Institute_ID === selectedInstituteId)
+              .sort((a, b) => new Date(b.Date) - new Date(a.Date))[0];
+            if (latestSurvey) {
+              const results = latestSurvey.Results;
+              parties.forEach(p => {
+                const partyId = getPartyId(p);
+                document.getElementById(p).value = results[partyId] || 0;
+              });
+              calculateSeats();
+            }
+          }
+        });
+      });
+
+    function getPartyId(partyName) {
+      const partyMap = {
+        "LINKE": "5", "GRÜNE": "4", "SPD": "2", "BSW": "23",
+        "FDP": "3", "CDU/CSU": "1", "AFD": "7"
+      };
+      return partyMap[partyName];
+    }
+
+    function calculateSeats() {
+      let totalPercent = 0;
+      let percentages = {};
+      parties.forEach(p => {
+        let val = parseFloat(document.getElementById(p).value) || 0;
+        percentages[p] = val;
+        totalPercent += val;
+      });
+      let remaining = Math.max(0, 100 - totalPercent);
+      document.getElementById("Sonstige").value = remaining;
+
+      let validParties = parties.filter(p => percentages[p] >= 5);
+      let validPercentTotal = validParties.reduce((sum, p) => sum + percentages[p], 0);
+      let seats = {};
+      validParties.forEach(p => {
+        seats[p] = Math.round((percentages[p] / validPercentTotal) * seatsTotal);
+      });
+
+      drawHalfCircle(seats);
+      updateLegend(seats);
+      updateCoalitionBox(seats);
+    }
+
+    function drawHalfCircle(seats) {
+      const canvas = document.getElementById("chart");
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height;
+      const radius = Math.min(centerX, centerY) - 10;
+      let startAngle = Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, startAngle, startAngle + Math.PI, false);
+      ctx.closePath();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      Object.entries(seats).forEach(([party, seatCount]) => {
+        if (seatCount > 0) {
+          let angle = (seatCount / seatsTotal) * Math.PI;
+          ctx.beginPath();
+          ctx.moveTo(centerX, centerY);
+          ctx.arc(centerX, centerY, radius, startAngle, startAngle + angle, false);
+          ctx.closePath();
+          ctx.fillStyle = partyColors[party] || "#999999";
+          ctx.fill();
+          if (selectedParties.has(party)) {
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 6;
+            ctx.stroke();
+          }
+          startAngle += angle;
+        }
+      });
+    }
+
+    function updateLegend(seats) {
+      const legend = document.getElementById("legend");
+      legend.innerHTML = "";
+      Object.entries(seats).forEach(([party, seatCount]) => {
+        if (seatCount > 0) {
+          const percent = ((seatCount / seatsTotal) * 100).toFixed(1);
+          const legendItem = document.createElement("div");
+          legendItem.className = `legend-item flex items-center gap-[0.5em] p-[0.5em_0.75em] bg-[#c9ceff] rounded-[0.5em] shadow-[0_2px_4px_rgba(0,0,0,0.2)] cursor-pointer transition-transform duration-200 hover:transform hover:-translate-y-[0.125em] hover:shadow-[0_0.5em_1em_rgba(0,0,0,0.3)] ${selectedParties.has(party) ? "selected" : ""}`;
+          legendItem.innerHTML = `
+            <div class="legend-color w-[1em] h-[1em] rounded-[0.25em]" style="background: ${partyColors[party]}"></div>
+            <div class="legend-text text-[1em] font-bold">${party} (${percent}%)</div>
+          `;
+          legendItem.addEventListener("click", () => togglePartySelection(party));
+          legend.appendChild(legendItem);
+        }
+      });
+    }
+
+    function togglePartySelection(party) {
+      if (selectedParties.has(party)) {
+        selectedParties.delete(party);
+      } else {
+        selectedParties.add(party);
+      }
+      calculateSeats();
+    }
+
+    function updateCoalitionBox(seats) {
+      const coalitionBox = document.getElementById("coalition-box");
+      if (selectedParties.size > 0) {
+        const total = Array.from(selectedParties).reduce((sum, p) => sum + ((seats[p] / seatsTotal) * 100), 0);
+        coalitionBox.innerHTML = `
+          <div class="coalition-item text-[1.25em] font-bold">
+            Gesamtprozent der Koalition: ${total.toFixed(1)}%
+          </div>
+        `;
+      } else {
+        coalitionBox.innerHTML = `
+          <div class="coalition-item text-[1.25em] font-bold">
+            ↑ Wähle Parteien aus ↑
+          </div>
+        `;
+      }
+    }
+
+    // Bei manueller Änderung wird "Manuell" gewählt
+    function handleInputChange() {
+      const instituteSelect = document.getElementById("institute-select");
+      if (instituteSelect.value !== "manual") {
+        instituteSelect.value = "manual";
+      }
+      calculateSeats();
+    }
+  </script>
+</body>
+</html>
