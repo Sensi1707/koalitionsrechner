@@ -5,33 +5,250 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Koalitionsrechner 2025</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
     body {
-      font-family: 'Gilroy Black', sans-serif;
-      font-style: italic;
+      font-family: 'Inter', sans-serif;
+      transition: background-color 0.3s, color 0.3s;
     }
+
+    body.dark {
+      background-color: #111827; /* Dunklerer Hintergrund für Dark Mode */
+      color: #f9fafb; /* Hellerer Text für Dark Mode */
+    }
+
+    .input-group input[type="number"]::-webkit-inner-spin-button,
+    .input-group input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .input-group input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
     .legend-item.selected {
-      border: 0.25em solid #ffffff;
+      outline: 3px solid #38bdf8; /* Deutlichere Umrandung für ausgewählte Elemente */
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3); /* Leuchtender Halo-Effekt */
+    }
+
+    /* Schalter-Design mit Sonne und Mond */
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem; /* Etwas mehr Abstand */
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute; /* Wichtig für das Anklicken */
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      z-index: 2; /* Über den Icons */
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e0; /* Neutralerer Hintergrund für Schalter */
+      transition: .4s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #6366f1; /* Deutlichere Farbe für aktiven Schalter */
+    }
+
+    input:focus + .slider {
+      box-shadow: 0 0 1px #6366f1;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    .sun-moon {
+      width: 20px;
+      height: 20px;
+      display: flex;        /* Neu: Für die Zentrierung */
+      align-items: center; /* Vertikal zentrieren */
+      justify-content: center; /* Horizontal zentrieren (optional) */
+    }
+
+    .sun-moon.sun {
+      color: #facc15;
+    }
+
+    .sun-moon.moon {
+      color: #cbd5e0;
+    }
+
+    /* Dark Mode Farben */
+    body.dark #coalition-box {
+      background-color: #374151; /* Dunklerer Farbton für Koalitionsbox */
+    }
+    body.dark #coalition-box .coalition-item{
+      color: #e5e7eb; /* Hellerer Text in der Koalitionsbox */
+    }
+    body.dark .bg-white{
+      background-color: #1f2937; /* Dunklerer Hintergrund für Karten */
+    }
+    body.dark .text-gray-800{
+      color: #e5e7eb; /* Hellerer Titel */
+    }
+    body.dark .text-gray-700{
+      color: #d1d5db; /* Helleres Label */
+    }
+    body.dark .text-gray-500{
+      color: #9ca3af; /* Hellerer Hilfstext */
+    }
+    body.dark .border-gray-300{
+      border-color: #4b5563; /* Dunklerer Rahmen */
+    }
+    body.dark .bg-gray-50{
+      background-color: #374151; /* Dunklerer Input-Hintergrund */
+    }
+    body.dark .bg-blue-50{
+      background-color: #374151;
+    }
+
+    /* Dropdown Style */
+    select {
+      appearance: none;
+      background-color: #fff;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      padding: 0.5rem 2.5rem 0.5rem 1rem; /* Platz für den Pfeil */
+      font-size: 0.875rem;
+      line-height: 1.25rem;
+      color: #374151;
+      transition: border-color 0.2s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E");
+      background-position: right 0.5rem center;
+      background-repeat: no-repeat;
+      background-size: 1.5em;
+    }
+    body.dark select {
+      color: #ffffff;
+      background-color: #374151;
+      border-color: #4b5563;
+    }
+    option {
+      background-color: #ffffff;
+      color: #374151;
+    }
+    body.dark option {
+        background-color: #1f2937;
+        color: #f9fafb;
+    }
+    select:focus {
+      outline: none;
+      border-color: #6366f1; /* Fokusfarbe */
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3); /* Leichter Schein */
+    }
+
+    /* Input Style */
+    input[type="number"] {
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      font-size: 1rem;
+      line-height: 1.5rem;
+      color: #4b5563;
+      background-color: #f9fafb;
+      border: 1px solid #d1d5db;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    body.dark input[type="number"] {
+      color: #e5e7eb;
+      background-color: #374151;
+      border-color: #4b5563;
+    }
+    body.dark input[type="number"]:focus{
+        outline: none;
+        border-color: #6366f1; /* Fokusfarbe */
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3); /* Leichter Schein */
+    }
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #6366f1; /* Fokusfarbe */
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3); /* Leichter Schein */
     }
   </style>
 </head>
-<body class="flex flex-col md:flex-row h-screen bg-[#252525] text-[#252525]">
-  <!-- Eingabebereich -->
-  <div class="w-full md:w-[30%] p-6 bg-[#252525] flex flex-col justify-center">
-    <p class="text-3xl md:text-5xl mb-4 text-center text-[#c9ceff]">Koalitionsrechner</p>
-    <select id="institute-select" class="mb-4 p-2 bg-[#c9ceff] rounded-lg">
-      <option value="">Institut auswählen</option>
-    </select>
-    <div id="inputs" class="flex flex-col gap-3"></div>
+<body class="h-screen">
+  <div class="absolute top-4 right-4">
+    <div class="toggle-container">
+      <div class="sun-moon sun">
+        <i class="fas fa-sun" aria-hidden="true"></i>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="darkModeToggle">
+        <span class="slider round"></span>
+      </label>
+      <div class="sun-moon moon">
+        <i class="fas fa-moon" aria-hidden="true"></i>
+      </div>
+    </div>
   </div>
 
-  <!-- Diagrammbereich -->
-  <div class="flex-grow flex flex-col items-center justify-center m-5 p-5">
-    <canvas id="chart" class="max-w-full" width="600" height="300"></canvas>
-    <div id="legend" class="flex flex-wrap gap-2 mt-5 justify-center"></div>
-    <div id="coalition-box" class="mt-5 h-16 p-4 bg-[#c9ceff] rounded transition-transform duration-200 hover:transform hover:-translate-y-1 hover:shadow-lg">
-      <div class="coalition-item text-xl font-bold">
-        ↑ Wähle Parteien für eine Koalition aus ↑
+  <div class="flex flex-col md:flex-row h-full transition-colors duration-300">
+    <!-- Eingabebereich -->
+    <div class="w-full md:w-[30%] p-8 m-4 bg-white shadow-2xl rounded-3xl flex flex-col justify-start transition-colors duration-300">
+      <h1 class="text-3xl md:text-4xl font-bold mb-6 text-gray-800 text-center">Koalitionsrechner</h1>
+      <label for="institute-select" class="block text-sm font-semibold text-gray-700 mb-2">Institut auswählen:</label>
+      <select id="institute-select" class="mt-1 block w-full  shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+        <option value="">Institut auswählen</option>
+      </select>
+
+      <div id="inputs" class="mt-6 flex flex-col gap-4">
+        <!-- Input-Felder werden hier dynamisch eingefügt -->
+      </div>
+    </div>
+
+    <!-- Diagrammbereich -->
+    <div class="flex-grow flex flex-col items-center justify-center m-4">
+      <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-3xl transition-colors duration-300">
+        <canvas id="chart" width="700" height="400"></canvas>
+      </div>
+      <div id="legend" class="flex flex-wrap gap-4 mt-6 justify-center transition-colors duration-300">
+        <!-- Legende wird hier dynamisch eingefügt -->
+      </div>
+      <div id="coalition-box" class="mt-8 p-6 rounded-3xl shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer">
+        <div class="coalition-item text-xl font-semibold text-center transition-colors duration-300">
+          ↑ Wähle Parteien aus ↑
+        </div>
       </div>
     </div>
   </div>
@@ -41,26 +258,40 @@
     const seatsTotal = 598;
     const partyColors = {
       "LINKE": "#be3075", "GRÜNE": "#64a12d", "SPD": "#e3000f", "BSW": "#54173c",
-      "FDP": "#ffed00", "CDU/CSU": "#000000", "AFD": "#009ee0"
+      "FDP": "#facc15", "CDU/CSU": "#243c5a", "AFD": "#22d3ee"
     };
 
+    let selectedParties = new Set();
+
     const inputContainer = document.getElementById("inputs");
+
     parties.forEach(p => {
       inputContainer.innerHTML += `
-        <div class="input-group flex items-center justify-between p-[0.5em] bg-[#c9ceff] rounded-[0.75em] mb-[0.75em] transition-transform duration-200 hover:transform hover:-translate-y-[0.125em] hover:shadow-[0_0.5em_1em_rgba(0,0,0,0.3)]">
-          <label class="font-bold flex-grow">${p}</label>
-          <input type="number" id="${p}" min="0" max="100" value="0" onchange="handleInputChange()" class="bg-transparent border-none p-[0.625em] rounded-[0.5em] h-[2em] w-[4em] text-center">
-          <p class="text-lg">%</p>
+        <div class="input-group flex items-center justify-between py-3 px-4 bg-gray-50 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300">
+          <label for="${p}" class="block text-sm font-semibold text-gray-700">${p}</label>
+          <div class="flex items-center space-x-3">
+            <input type="number" id="${p}" min="0" max="100" value="0" onchange="handleInputChange()" class="w-24 sm:text-sm rounded-xl text-right">
+            <span class="text-gray-500">%</span>
+          </div>
         </div>`;
     });
+
     inputContainer.innerHTML += `
-      <div class="input-group flex items-center justify-between p-[0.5em] bg-[#c9ceff] rounded-[0.75em] mb-[1em] transition-transform duration-200 hover:transform hover:-translate-y-[0.125em] hover:shadow-[0_0.5em_1em_rgba(0,0,0,0.3)]">
-        <label class="font-bold flex-grow">Sonstige</label>
-        <input type="number" id="Sonstige" readonly class="bg-transparent border-none p-[0.625em] rounded-[0.5em] h-[2em] w-[4em] text-center">
-        <p class="text-lg">%</p>
+      <div class="input-group flex items-center justify-between py-3 px-4 bg-gray-50 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300">
+        <label for="Sonstige" class="block text-sm font-semibold text-gray-700">Sonstige</label>
+        <div class="flex items-center space-x-3">
+          <input type="number" id="Sonstige" readonly class=" w-24 sm:text-sm rounded-xl text-right">
+          <span class="text-gray-500">%</span>
+        </div>
       </div>`;
 
-    let selectedParties = new Set();
+    // Dark Mode Toggle
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const body = document.body;
+
+    darkModeToggle.addEventListener('change', () => {
+      body.classList.toggle('dark');
+    });
 
     // Lade die JSON-Daten
     fetch('https://api.dawum.de/')
@@ -107,6 +338,8 @@
               });
               calculateSeats();
             }
+          } else {
+            calculateSeats(); // Sicherstellen, dass calculateSeats auch für "Manuell" aufgerufen wird
           }
         });
       });
@@ -148,15 +381,17 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const centerX = canvas.width / 2;
       const centerY = canvas.height;
-      const radius = Math.min(centerX, centerY) - 10;
+      const radius = Math.min(centerX, centerY) - 30;
+
       let startAngle = Math.PI;
+
+      // Zeichne den äußeren Halbkreis
       ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.arc(centerX, centerY, radius, startAngle, startAngle + Math.PI, false);
+      ctx.arc(centerX, centerY, radius, Math.PI, 0, true);
+      ctx.fillStyle = 'rgba(200, 200, 200, 0.2)'; // Sehr dezenter Hintergrund
+      ctx.fill();
       ctx.closePath();
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2;
-      ctx.stroke();
+
       Object.entries(seats).forEach(([party, seatCount]) => {
         if (seatCount > 0) {
           let angle = (seatCount / seatsTotal) * Math.PI;
@@ -166,11 +401,13 @@
           ctx.closePath();
           ctx.fillStyle = partyColors[party] || "#999999";
           ctx.fill();
+
           if (selectedParties.has(party)) {
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 6;
+            ctx.strokeStyle = "#38bdf8"; // Noch helleres Blau für die Auswahl
+            ctx.lineWidth = 5;
             ctx.stroke();
           }
+
           startAngle += angle;
         }
       });
@@ -182,11 +419,11 @@
       Object.entries(seats).forEach(([party, seatCount]) => {
         if (seatCount > 0) {
           const percent = ((seatCount / seatsTotal) * 100).toFixed(1);
-          const legendItem = document.createElement("div");
-          legendItem.className = `legend-item flex items-center gap-[0.5em] p-[0.5em_0.75em] bg-[#c9ceff] rounded-[0.5em] shadow-[0_2px_4px_rgba(0,0,0,0.2)] cursor-pointer transition-transform duration-200 hover:transform hover:-translate-y-[0.125em] hover:shadow-[0_0.5em_1em_rgba(0,0,0,0.3)] ${selectedParties.has(party) ? "selected" : ""}`;
+          const legendItem = document.createElement("button");
+          legendItem.className = `legend-item flex items-center gap-3 py-3 px-5 bg-white rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 ${selectedParties.has(party) ? "selected" : ""}`;
           legendItem.innerHTML = `
-            <div class="legend-color w-[1em] h-[1em] rounded-[0.25em]" style="background: ${partyColors[party]}"></div>
-            <div class="legend-text text-[1em] font-bold">${party} (${percent}%)</div>
+            <div class="w-5 h-5 rounded-full" style="background: ${partyColors[party]}"></div>
+            <div class="text-sm font-semibold text-gray-700">${party} (${percent}%)</div>
           `;
           legendItem.addEventListener("click", () => togglePartySelection(party));
           legend.appendChild(legendItem);
@@ -208,13 +445,13 @@
       if (selectedParties.size > 0) {
         const total = Array.from(selectedParties).reduce((sum, p) => sum + ((seats[p] / seatsTotal) * 100), 0);
         coalitionBox.innerHTML = `
-          <div class="coalition-item text-[1.25em] font-bold">
-            Gesamtprozent der Koalition: ${total.toFixed(1)}%
+          <div class="coalition-item text-xl font-semibold text-center">
+            Koalition: ${total.toFixed(1)}%
           </div>
         `;
       } else {
         coalitionBox.innerHTML = `
-          <div class="coalition-item text-[1.25em] font-bold">
+          <div class="coalition-item text-xl font-semibold text-center">
             ↑ Wähle Parteien aus ↑
           </div>
         `;
